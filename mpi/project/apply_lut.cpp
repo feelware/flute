@@ -27,7 +27,6 @@ Vec3b trilinear_interp(const Mat &lut, float r, float g, float b, int n) {
         return res;
 }
 
-
 int apply_lut_from_buffer(const std::vector<Mat>& frames, std::vector<Mat>& processed_frames, const char* lut_path) {
     Mat raw_lut = imread(lut_path, IMREAD_COLOR);
 

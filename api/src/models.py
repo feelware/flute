@@ -1,7 +1,6 @@
 from tortoise import fields
 from tortoise.models import Model
 
-
 class Job(Model):
     """
     Job model to track video processing tasks

@@ -51,7 +51,6 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-
 @app.on_event("startup")
 async def startup_event():
     logger.info("Initializing Tortoise ORM...")
@@ -65,12 +64,10 @@ async def startup_event():
     except OperationalError as e:
         logger.error(f"Failed to connect to the database: {e}")
 
-
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Closing Tortoise ORM connection...")
     await connections.close_all()
-
 
 @app.get("/")
 async def root():
@@ -79,7 +76,6 @@ async def root():
         "version": "1.0.0",
         "status": "running"
     }
-
 
 @app.get("/test-db")
 async def test_db_connection():
@@ -91,7 +87,6 @@ async def test_db_connection():
         return JSONResponse(
             status_code=500, content={"status": "error", "message": str(e)}
         )
-
 
 @app.get("/test-storage")
 async def test_storage_connection():

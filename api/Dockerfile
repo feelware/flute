@@ -36,7 +36,7 @@ RUN tinysshd-makekey /etc/tinyssh/sshkeydir
 # Create mpiuser and .ssh directory for SSH keys
 RUN useradd -m -s /bin/bash mpiuser
 RUN mkdir -p /home/mpiuser/.ssh
-COPY ../ssh/* /home/mpiuser/.ssh/
+COPY ssh/* /home/mpiuser/.ssh/
 RUN chmod 700 /home/mpiuser/.ssh/
 RUN chmod 600 /home/mpiuser/.ssh/authorized_keys
 RUN chmod 600 /home/mpiuser/.ssh/id_ecdsa

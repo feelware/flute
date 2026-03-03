@@ -43,8 +43,8 @@ WORKDIR /root
 
 # configure tinysshd
 RUN tinysshd-makekey /etc/tinyssh/sshkeydir
-RUN mkdir .ssh/
-COPY ../ssh/* .ssh/
+# RUN mkdir .ssh/
+COPY ssh/* .ssh/
 RUN chmod 700 .ssh/
 RUN chmod 600 .ssh/authorized_keys
 RUN chmod 600 .ssh/id_ecdsa
@@ -55,15 +55,11 @@ RUN touch /var/log/rabbitmq_consumer.log && chmod 644 /var/log/rabbitmq_consumer
 
 # core source code
 COPY project/ project
-RUN cd project && make -C .
+RUN make -C project
 
 # master scripts
 COPY bin-master/* /usr/local/bin/
 
-# extra resources
-RUN mkdir luts
-COPY ../example-luts/* luts/
-
-RUN chmod +x init.sh
+RUN chmod +x project/init.sh
 
 CMD ["/bin/bash", "-c", "init.sh", "&&", "tcpserver", "-HRDl0", "0.0.0.0", "22", "/usr/sbin/tinysshd", "-v", "/etc/tinyssh/sshkeydir"]
