@@ -1,0 +1,108 @@
+version: "3.8"
+services:
+  master:
+    image: 127.0.0.1:5000/mpi
+    build: /mpi
+    ports:
+    #  - target: 22
+    #    published: 2222
+    #    protocol: tcp
+    #    mode: host
+    deploy:
+      placement:
+        constraints:
+          - "node.role==manager"
+    # volumes:
+    #   - ./mpi/project:/root/project
+    networks:
+      - my_net
+
+  worker:
+    image: 127.0.0.1:5000/mpi
+    depends_on:
+      - master
+    deploy:
+      replicas: 1
+      placement:
+        max_replicas_per_node: 1
+    networks:
+      - my_net
+
+  api:
+    build:
+      context: api/
+      dockerfile: Dockerfile
+    container_name: api
+    environment:
+      S3_ACCESS_KEY_ID: minio
+      S3_SECRET_ACCESS_KEY: minio123
+      S3_BUCKET_NAME: artifacts
+      S3_ENDPOINT_URL: http://minio:9000
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: AMyGOUcgJJk7YjA6a8cS
+      POSTGRES_DB: processing_jobs
+      POSTGRES_HOST: postgres
+      RMQ_HOST: rabbitmq
+      RMQ_PORT: 5672
+      RMQ_USER: guest
+      RMQ_PASSWORD: guest
+      MPI_MASTER_HOST: master
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      minio:
+        condition: service_started
+      master:
+        condition: service_started
+    networks:
+      - my_net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - my_net
+
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    environment:
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: AMyGOUcgJJk7YjA6a8cS
+      POSTGRES_DB: processing_jobs
+    ports:
+      - "5432:5432"
+    networks:
+      - my_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    volumes:
+      - ./minio:/minio
+    entrypoint: sh
+    command: /minio/init.sh
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - my_net
+
+networks:
+  my_net:
+    driver: bridge
