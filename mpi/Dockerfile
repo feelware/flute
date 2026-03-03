@@ -1,9 +1,9 @@
 FROM ubuntu:24.04
-ARG BUILDER_UID
+
 RUN DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get clean && apt-get update && apt-get install -y \
-  apt-utils \
+RUN apt-get update && apt-get install -y \
+  # apt-utils \
   bc \
   build-essential \
   sudo \
