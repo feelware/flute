@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ "$1" -eq 0 ]; then
+    echo "no job provided"
+    exit 1
+fi
+
+docker exec $(docker ps -q -f name=stackmpi_master) tail -f /var/log/mpi_jobs/$1.log

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ "$1" -eq 0 ]; then
+    echo "no job provided"
+    exit 1
+fi
+
+docker cp $(docker ps -q -f name=stackmpi_master):/root/processed_video_$1.avi ~/Desktop/demo
+mpv ~/Desktop/demo/processed_video_$1.avi
