@@ -235,21 +235,10 @@ int main(int argc, char **argv) {
 
     if (rank != 0) {
         std::vector<std::vector<uchar>> serialized_frames;
-        if (enable_intra_node_parallelism) {
-            #pragma omp parallel for shared(serialized_frames)
-            for (int idx = 0; idx < (int)processed_frames.size(); idx++) {
-                std::vector<uchar> buffer;
-                imencode(".jpg", processed_frames[idx], buffer);
-                #pragma omp critical
-                serialized_frames.push_back(buffer);
-            }
-        } else {
-            // Sequential version when parallelism is disabled
-            for (const auto& frame : processed_frames) {
-                std::vector<uchar> buffer;
-                imencode(".jpg", frame, buffer);
-                serialized_frames.push_back(buffer);
-            }
+        for (const auto& frame : processed_frames) {
+            std::vector<uchar> buffer;
+            imencode(".jpg", frame, buffer);
+            serialized_frames.push_back(buffer);
         }
 
         // Send processed frames back to process 0
