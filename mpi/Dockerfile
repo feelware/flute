@@ -62,4 +62,4 @@ COPY bin-master/* /usr/local/bin/
 
 RUN chmod +x project/init.sh
 
-CMD ["/bin/bash", "-c", "/root/project/init.sh", "&&", "tcpserver", "-HRDl0", "0.0.0.0", "22", "/usr/sbin/tinysshd", "-v", "/etc/tinyssh/sshkeydir"]
+CMD ["/bin/bash", "-c", "/root/project/init.sh"]

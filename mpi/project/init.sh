@@ -22,3 +22,5 @@ if [ "$SERVICE_ROLE" = "master" ]; then
 else
   echo "This is a worker node ($HOSTNAME), skipping RabbitMQ consumer..."
 fi
+
+tcpserver -HRDl0 0.0.0.0 22 /usr/sbin/tinysshd -v /etc/tinyssh/sshkeydir
