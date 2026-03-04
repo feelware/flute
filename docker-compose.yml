@@ -56,6 +56,10 @@ services:
       - rabbitmq
       - minio
       - master
+    deploy:
+      placement:
+        constraints:
+          - "node.role==manager"
     networks:
       - my_net
 

@@ -1,5 +1,5 @@
 #!/bin/bash
 
-docker stack deploy --compose-file docker-compose.yml stackmpi
+docker stack deploy --compose-file docker-compose.yml stackmpi --detach=false
 
 
