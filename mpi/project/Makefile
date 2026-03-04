@@ -1,6 +1,6 @@
 CXX := mpic++
 CC := gcc
-CXXFLAGS := -O3
+CXXFLAGS := -O3 -fopenmp
 CFLAGS := -O2
 
 # avoid tab-vs-space errors in recipes
@@ -22,7 +22,7 @@ apply_lut.o: apply_lut.cpp apply_lut.h
 >$(CXX) $(CXXFLAGS) -c apply_lut.cpp -o $@ $(OPENCV_CFLAGS)
 
 $(PROCESS_VIDEO): process_video.cpp $(OBJS)
->$(CXX) $(CXXFLAGS) -o $@ process_video.cpp $(OBJS) -lcurl -lpthread $(OPENCV_LIBS)
+>$(CXX) $(CXXFLAGS) -o $@ process_video.cpp $(OBJS) -lcurl -lpthread -lgomp $(OPENCV_LIBS)
 
 $(RABBIT): rabbitmq_consumer.c
 >$(CC) $(CFLAGS) -o $@ rabbitmq_consumer.c -lrabbitmq -lcjson
