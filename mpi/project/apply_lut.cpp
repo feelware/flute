@@ -39,21 +39,28 @@ int apply_lut_from_buffer(const std::vector<Mat>& frames, std::vector<Mat>& proc
     int n   = img_size / bpr;
     int sizes[3] = {n, n, n};
     Mat lut(3, sizes, CV_8UC3);
+    
+    #pragma omp parallel for collapse(3)
     for (int ri = 0; ri < n; ri++)
         for (int gi = 0; gi < n; gi++)
             for (int bi = 0; bi < n; bi++)
                 lut.at<Vec3b>(ri, gi, bi) = raw_lut.at<Vec3b>((bi/bpr)*n+gi, (bi%bpr)*n+ri);
 
-    processed_frames.clear();
+    processed_frames.resize(frames.size());
     float scale = (n-1) / 255.0f;
-    for (const auto& in_frame : frames) {
+    
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t frame_idx = 0; frame_idx < frames.size(); frame_idx++) {
+        const Mat& in_frame = frames[frame_idx];
+        
         if (in_frame.empty()) {
             fprintf(stderr, "Error: Frame vacío encontrado\n");
             continue;
         }
 
         Mat output_frame = Mat(in_frame.size(), in_frame.type());
-        #pragma omp parallel for collapse(2)
+        
+        #pragma omp parallel for collapse(2) schedule(static)
         for (int y = 0; y < in_frame.rows; y++) {
             for (int x = 0; x < in_frame.cols; x++) {
                 Vec3b p = in_frame.at<Vec3b>(y, x);
@@ -61,7 +68,7 @@ int apply_lut_from_buffer(const std::vector<Mat>& frames, std::vector<Mat>& proc
             }
         }
 
-        processed_frames.push_back(output_frame);
+        processed_frames[frame_idx] = output_frame;
     }
 
     return 1;

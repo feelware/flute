@@ -14,7 +14,6 @@
 
 using namespace cv;
 
-// Helper function to read frames from video
 std::vector<Mat> read_frames(const char* video_path, int start, int end) {
     std::vector<Mat> frames;
     VideoCapture cap(video_path);
@@ -33,7 +32,6 @@ std::vector<Mat> read_frames(const char* video_path, int start, int end) {
     return frames;
 }
 
-// Helper function to write frames to video
 void write_frames(const char* output_path, const std::vector<Mat>& frames, double fps, Size frame_size) {
     int fourcc = VideoWriter::fourcc('M', 'J', 'P', 'G');
     VideoWriter writer(output_path, fourcc, fps, frame_size);
@@ -220,7 +218,6 @@ int main(int argc, char **argv) {
             MPI_Send(frame_buffer.data(), frame_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
         }
     } else {
-        // Process 0 receives processed frames from other processes
         std::vector<Mat> all_processed_frames = processed_frames; // Start with its own processed frames
         for (int i = 1; i < num_procs; i++) {
             int num_frames;
@@ -242,7 +239,6 @@ int main(int argc, char **argv) {
 
         printf("Process %d received a total of %lu processed frames\n", rank, all_processed_frames.size());
 
-        // Write all processed frames to output video
         char output_path[512];
         snprintf(output_path, sizeof(output_path), "processed_video_%s.avi", job_id);
         write_frames(output_path, all_processed_frames, fps, frame_size);
