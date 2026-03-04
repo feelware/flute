@@ -8,6 +8,8 @@ services:
     #    published: 2222
     #    protocol: tcp
     #    mode: host
+    environment:
+      SERVICE_ROLE: master
     deploy:
       placement:
         constraints:
@@ -21,6 +23,8 @@ services:
     image: 127.0.0.1:5000/mpi
     depends_on:
       - master
+    environment:
+      SERVICE_ROLE: worker
     deploy:
       replicas: 1
       placement:
@@ -100,4 +104,4 @@ services:
 
 networks:
   my_net:
-    driver: bridge
+    driver: overlay
