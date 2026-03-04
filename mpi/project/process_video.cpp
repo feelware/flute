@@ -6,6 +6,7 @@
 #include <curl/curl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <omp.h>
 #include "apply_lut.h"
 #include "download_media.h"
 #include <vector>
@@ -54,7 +55,7 @@ int main(int argc, char **argv) {
 
     if (argc < 4) {
         if (rank == 0) {
-            fprintf(stderr, "Usage: %s <job_id> <in_video_storage_path> <lut_storage_path> [params]\n", argv[0]);
+            fprintf(stderr, "Usage: %s <job_id> <in_video_storage_path> <lut_storage_path> [enable_intra_node_parallelism]\n", argv[0]);
         }
         MPI_Finalize();
         return 1;
@@ -63,6 +64,25 @@ int main(int argc, char **argv) {
     const char *job_id = argv[1];
     const char *in_video_storage_path = argv[2];
     const char *lut_storage_path = argv[3];
+    
+    // Parse intra-node parallelism flag (default to true for backward compatibility)
+    int enable_intra_node_parallelism = 1;
+    if (argc >= 5) {
+        enable_intra_node_parallelism = (atoi(argv[4]) != 0) ? 1 : 0;
+    }
+    
+    // Disable OpenMP if intra-node parallelism is disabled
+    if (!enable_intra_node_parallelism) {
+        omp_set_num_threads(1);
+        if (rank == 0) {
+            printf("Intra-node parallelism disabled (OpenMP threads set to 1)\n");
+        }
+    } else {
+        if (rank == 0) {
+            printf("Intra-node parallelism enabled\n");
+        }
+    }
+    fflush(stdout);
 
     char in_video_path[512];
     snprintf(in_video_path, sizeof(in_video_path), "/tmp/video_%s.mp4", job_id);
@@ -131,16 +151,28 @@ int main(int argc, char **argv) {
             start_frame = end_frame;
         }
 
-        // Serialize the video portions for sending with OpenMP parallelization
+        // Serialize the video portions for sending with optional OpenMP parallelization
         std::vector<std::vector<std::vector<uchar>>> serialized_portions(num_procs);
-        #pragma omp parallel for shared(serialized_portions)
-        for (int i = 1; i < num_procs; i++) {
-            std::vector<Mat> process_frames = read_frames(in_video_path, frame_ranges[i][0], frame_ranges[i][1]);
-            for (const auto& frame : process_frames) {
-                std::vector<uchar> buffer;
-                imencode(".jpg", frame, buffer);
-                #pragma omp critical
-                serialized_portions[i].push_back(buffer);
+        if (enable_intra_node_parallelism) {
+            #pragma omp parallel for shared(serialized_portions)
+            for (int i = 1; i < num_procs; i++) {
+                std::vector<Mat> process_frames = read_frames(in_video_path, frame_ranges[i][0], frame_ranges[i][1]);
+                for (const auto& frame : process_frames) {
+                    std::vector<uchar> buffer;
+                    imencode(".jpg", frame, buffer);
+                    #pragma omp critical
+                    serialized_portions[i].push_back(buffer);
+                }
+            }
+        } else {
+            // Sequential version when parallelism is disabled
+            for (int i = 1; i < num_procs; i++) {
+                std::vector<Mat> process_frames = read_frames(in_video_path, frame_ranges[i][0], frame_ranges[i][1]);
+                for (const auto& frame : process_frames) {
+                    std::vector<uchar> buffer;
+                    imencode(".jpg", frame, buffer);
+                    serialized_portions[i].push_back(buffer);
+                }
             }
         }
 
@@ -203,10 +235,21 @@ int main(int argc, char **argv) {
 
     if (rank != 0) {
         std::vector<std::vector<uchar>> serialized_frames;
-        for (const auto& frame : processed_frames) {
-            std::vector<uchar> buffer;
-            imencode(".jpg", frame, buffer);
-            serialized_frames.push_back(buffer);
+        if (enable_intra_node_parallelism) {
+            #pragma omp parallel for shared(serialized_frames)
+            for (int idx = 0; idx < (int)processed_frames.size(); idx++) {
+                std::vector<uchar> buffer;
+                imencode(".jpg", processed_frames[idx], buffer);
+                #pragma omp critical
+                serialized_frames.push_back(buffer);
+            }
+        } else {
+            // Sequential version when parallelism is disabled
+            for (const auto& frame : processed_frames) {
+                std::vector<uchar> buffer;
+                imencode(".jpg", frame, buffer);
+                serialized_frames.push_back(buffer);
+            }
         }
 
         // Send processed frames back to process 0

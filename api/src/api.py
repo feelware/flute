@@ -263,7 +263,8 @@ async def send_to_rabbitmq(message_data: dict) -> None:
 async def upload_video(
     file: UploadFile = File(..., description="MP4 video file to process"),
     lut: UploadFile = File(..., description="LUT image file (PNG, JPG, JPEG, or CUBE format)"),
-    params: str = Form(..., description="JSON string with task parameters")
+    num_mpi_processes: int = Form(4, description="Number of MPI processes to use"),
+    enable_intra_node_parallelism: bool = Form(True, description="Enable intra-node parallelism (pthreads and OpenMP)")
 ):
     """
     Upload a video file and LUT for distributed processing
@@ -271,16 +272,8 @@ async def upload_video(
     **Parameters:**
     - **file**: MP4 video file (max 500MB)
     - **lut**: LUT image file for color grading (PNG, JPG, JPEG, or CUBE format, max 10MB)
-    - **params**: JSON parameters for the processing task
-    
-    **Example params:**
-    ```json
-    {
-        "output_format": "mp4",
-        "resolution": "1080p",
-        "quality": "high"
-    }
-    ```
+    - **num_mpi_processes**: Number of MPI processes to use (default: 4)
+    - **enable_intra_node_parallelism**: Enable intra-node parallelism using pthreads and OpenMP (default: True)
     
     **Returns:**
     - job_id: Unique identifier for tracking the job
@@ -289,14 +282,6 @@ async def upload_video(
     - status: Current job status
     """
     try:
-        try:
-            params_dict = json.loads(params)
-        except json.JSONDecodeError:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid JSON in params field"
-            )
-        
         # Read and validate video file
         video_content = await file.read()
         video_size = len(video_content)
@@ -333,7 +318,8 @@ async def upload_video(
             job_id=job_id,
             video_path=video_path,
             lut_path=lut_path,
-            params=params_dict,
+            num_mpi_processes=num_mpi_processes,
+            enable_intra_node_parallelism=enable_intra_node_parallelism,
             status="pending"
         )
         
@@ -343,7 +329,8 @@ async def upload_video(
             "job_id": job_id,
             "video_path": video_path,
             "lut_path": lut_path,
-            "params": params_dict,
+            "num_mpi_processes": num_mpi_processes,
+            "enable_intra_node_parallelism": enable_intra_node_parallelism,
             "created_at": job.created_at.isoformat()
         }
         
@@ -354,7 +341,8 @@ async def upload_video(
             "job_id": job_id,
             "video_path": video_path,
             "lut_path": lut_path,
-            "params": params_dict,
+            "num_mpi_processes": num_mpi_processes,
+            "enable_intra_node_parallelism": enable_intra_node_parallelism,
             "message": "Video and LUT uploaded successfully and queued for processing",
             "created_at": job.created_at.isoformat()
         }
@@ -387,7 +375,8 @@ async def get_job_status(job_id: str):
             "job_id": job.job_id,
             "video_path": job.video_path,
             "lut_path": job.lut_path,
-            "params": job.params,
+            "num_mpi_processes": job.num_mpi_processes,
+            "enable_intra_node_parallelism": job.enable_intra_node_parallelism,
             "status": job.status,
             "created_at": job.created_at.isoformat(),
             "updated_at": job.updated_at.isoformat(),

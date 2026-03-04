@@ -49,11 +49,12 @@ void process_message(const char *message, size_t message_len) {
     const cJSON *job_id = cJSON_GetObjectItemCaseSensitive(json, "job_id");
     const cJSON *video_path = cJSON_GetObjectItemCaseSensitive(json, "video_path");
     const cJSON *lut_path = cJSON_GetObjectItemCaseSensitive(json, "lut_path");
-    const cJSON *params = cJSON_GetObjectItemCaseSensitive(json, "params");
+    const cJSON *num_mpi_processes = cJSON_GetObjectItemCaseSensitive(json, "num_mpi_processes");
+    const cJSON *enable_intra_node_parallelism = cJSON_GetObjectItemCaseSensitive(json, "enable_intra_node_parallelism");
 
     // Validar que los campos obligatorios existan
-    if (!cJSON_IsString(job_id) || !cJSON_IsString(video_path) || !cJSON_IsString(lut_path)) {
-        fprintf(stderr, "❌ Error: Faltan campos obligatorios (job_id, video_path, lut_path)\n");
+    if (!cJSON_IsString(job_id) || !cJSON_IsString(video_path) || !cJSON_IsString(lut_path) || !cJSON_IsNumber(num_mpi_processes)) {
+        fprintf(stderr, "❌ Error: Faltan campos obligatorios (job_id, video_path, lut_path, num_mpi_processes)\n");
         cJSON_Delete(json);
         return;
     }
@@ -63,32 +64,24 @@ void process_message(const char *message, size_t message_len) {
     printf("   Job ID: %s\n", job_id->valuestring);
     printf("   Video Path: %s\n", video_path->valuestring);
     printf("   LUT Path: %s\n", lut_path->valuestring);
-    
-    if (cJSON_IsObject(params)) {
-        char *params_str = cJSON_Print(params);
-        printf("   Params: %s\n", params_str);
-        free(params_str);
-    }
+    printf("   MPI Processes: %d\n", (int)num_mpi_processes->valuedouble);
+    printf("   Enable Intra-Node Parallelism: %s\n", enable_intra_node_parallelism && cJSON_IsTrue(enable_intra_node_parallelism) ? "true" : "false");
     printf("\n");
 
-    // Preparar params como string para el comando
-    char *params_str = NULL;
-    if (cJSON_IsObject(params)) {
-        params_str = cJSON_Print(params);
-    }
-    if (!params_str) {
-        params_str = strdup("{}");
-    }
+    // Preparar argumentos para start-process.sh
+    int num_processes = (int)num_mpi_processes->valuedouble;
+    const char *parallelism_flag = (enable_intra_node_parallelism && cJSON_IsTrue(enable_intra_node_parallelism)) ? "1" : "0";
 
-    // Ejecutar el comando MPI como el usuario mpiuser (usa /home/mpiuser/.ssh)
-    // Esto evita que mpirun intente SSH como root y falle por host-key/credenciales
-    char command[4096];
+    // Ejecutar el comando MPI con los nuevos argumentos
+    // start-process.sh $1(job_id) $2(video_path) $3(lut_path) $4(num_mpi_processes) $5(enable_intra_node_parallelism)
+    char command[2048];
     snprintf(command, sizeof(command),
-        "/root/project/start-process.sh %s %s %s \"%s\"",
+        "/root/project/start-process.sh %s %s %s %d %s",
         job_id->valuestring,
         video_path->valuestring,
         lut_path->valuestring,
-        params_str
+        num_processes,
+        parallelism_flag
     );
     
     printf("Ejecutando: %s\n", command);
@@ -105,7 +98,6 @@ void process_message(const char *message, size_t message_len) {
     fflush(stdout);
 
     // Liberar memoria
-    free(params_str);
     cJSON_Delete(json);
 }
 
