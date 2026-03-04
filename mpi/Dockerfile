@@ -43,7 +43,6 @@ WORKDIR /root
 
 # configure tinysshd
 RUN tinysshd-makekey /etc/tinyssh/sshkeydir
-# RUN mkdir .ssh/
 COPY ssh/* .ssh/
 RUN chmod 700 .ssh/
 RUN chmod 600 .ssh/authorized_keys
@@ -61,5 +60,6 @@ RUN make -C project
 COPY bin-master/* /usr/local/bin/
 
 RUN chmod +x project/init.sh
+RUN chmod +x project/start-process.sh
 
 CMD ["/bin/bash", "-c", "/root/project/init.sh"]
